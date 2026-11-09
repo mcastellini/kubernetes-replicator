@@ -158,6 +158,19 @@ a namespace if one of the following applies:
     - cert-manager
   ```
 
+  Namespaces matching one of the regular expressions passed with `--push-denied-source-namespaces` (Helm value
+  `pushDeniedSourceNamespaces`) are not allowed, even if they match `--push-allowed-source-namespaces`. This makes it
+  possible to trust a group of namespaces except some of them, which Go regular expressions cannot express on their
+  own (they do not support negative lookahead):
+
+  ```yaml
+  # values.yaml
+  pushAllowedSourceNamespaces:
+    - team-.+
+  pushDeniedSourceNamespaces:
+    - .*-pr-[0-9]+
+  ```
+
 - The target namespace accepts objects from the source namespace with the `replicator.v1.mittwald.de/allow-push-from`
   annotation, which contains a comma separated list of regular expressions for source namespaces. This does not apply
   to Roles and RoleBindings, which can only be pushed from namespaces allowed by `--push-allowed-source-namespaces`.

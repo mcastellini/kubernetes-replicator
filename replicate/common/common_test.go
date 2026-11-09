@@ -106,17 +106,17 @@ func TestNamespaceFilter(t *testing.T) {
 }
 
 func TestPushPolicy(t *testing.T) {
-	policy, err := NewPushPolicy([]string{"platform", " cert-.*", ""})
+	policy, err := NewPushPolicy([]string{"platform", " cert-.*", ""}, nil)
 	require.NoError(t, err)
 	require.True(t, policy.AllowsSourceNamespace("platform"))
 	require.True(t, policy.AllowsSourceNamespace("cert-manager"))
 	require.False(t, policy.AllowsSourceNamespace("platform-evil"))
 	require.False(t, policy.AllowsSourceNamespace("team-a"))
 
-	_, err = NewPushPolicy([]string{"platform)|(.*"})
+	_, err = NewPushPolicy([]string{"platform)|(.*"}, nil)
 	require.Error(t, err)
 
-	empty, err := NewPushPolicy([]string{""})
+	empty, err := NewPushPolicy([]string{""}, nil)
 	require.NoError(t, err)
 	require.False(t, empty.AllowsSourceNamespace("platform"))
 
@@ -124,8 +124,38 @@ func TestPushPolicy(t *testing.T) {
 	require.False(t, nilPolicy.AllowsSourceNamespace("platform"))
 }
 
+func TestPushPolicyDenied(t *testing.T) {
+	policy, err := NewPushPolicy([]string{"platform", "team-.+"}, []string{".*-pr-[0-9]+", " ", "team-b"})
+	require.NoError(t, err)
+	require.True(t, policy.AllowsSourceNamespace("platform"))
+	require.True(t, policy.AllowsSourceNamespace("team-a"))
+	require.True(t, policy.AllowsSourceNamespace("team-a-pr-x"))
+	require.False(t, policy.AllowsSourceNamespace("team-a-pr-42"))
+	require.False(t, policy.AllowsSourceNamespace("team-b"))
+	require.True(t, policy.AllowsSourceNamespace("team-b-dev"))
+	require.Equal(t, []string{".*-pr-[0-9]+", "team-b"}, policy.DeniedSourceNamespaces)
+
+	// denied patterns alone allow nothing
+	denyOnly, err := NewPushPolicy(nil, []string{"team-b"})
+	require.NoError(t, err)
+	require.False(t, denyOnly.AllowsSourceNamespace("team-a"))
+
+	_, err = NewPushPolicy([]string{"platform"}, []string{"team-[a-"})
+	require.Error(t, err)
+
+	// denied source namespaces can still push into namespaces that accept them
+	r := &GenericReplicator{ReplicatorConfig: ReplicatorConfig{PushPolicy: policy}}
+	plain := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-c"}}
+	consenting := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name:        "team-d",
+		Annotations: map[string]string{AllowPushFrom: "team-a-pr-[0-9]+"},
+	}}
+	require.Error(t, r.IsPushPermitted("team-a-pr-42", plain))
+	require.NoError(t, r.IsPushPermitted("team-a-pr-42", consenting))
+}
+
 func TestIsPushPermitted(t *testing.T) {
-	policy, err := NewPushPolicy([]string{"platform"})
+	policy, err := NewPushPolicy([]string{"platform"}, nil)
 	require.NoError(t, err)
 	r := &GenericReplicator{ReplicatorConfig: ReplicatorConfig{PushPolicy: policy}}
 

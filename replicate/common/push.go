@@ -17,15 +17,32 @@ import (
 // Push replication writes into other namespaces with the replicator's own (cluster-wide) permissions. It is therefore
 // only performed if the source namespace is allowed by this policy, or if the target namespace explicitly accepts
 // objects from the source namespace through the AllowPushFrom annotation.
+//
+// Denied patterns take precedence over allowed ones, but do not affect the AllowPushFrom annotation.
 type PushPolicy struct {
 	AllowedSourceNamespaces []string
-	compiled                []*regexp.Regexp
+	DeniedSourceNamespaces  []string
+	allowed                 []*regexp.Regexp
+	denied                  []*regexp.Regexp
 }
 
-// NewPushPolicy creates a push policy from a list of regular expressions. Each expression has to match the complete
-// name of a source namespace. An error is returned for invalid expressions.
-func NewPushPolicy(patterns []string) (*PushPolicy, error) {
+// NewPushPolicy creates a push policy from lists of regular expressions for allowed and denied source namespaces.
+// Each expression has to match the complete name of a source namespace. An error is returned for invalid expressions.
+func NewPushPolicy(allowed, denied []string) (*PushPolicy, error) {
 	policy := PushPolicy{}
+	var err error
+	if policy.AllowedSourceNamespaces, policy.allowed, err = compilePushPatterns(allowed); err != nil {
+		return nil, err
+	}
+	if policy.DeniedSourceNamespaces, policy.denied, err = compilePushPatterns(denied); err != nil {
+		return nil, err
+	}
+	return &policy, nil
+}
+
+func compilePushPatterns(patterns []string) ([]string, []*regexp.Regexp, error) {
+	var names []string
+	var compiled []*regexp.Regexp
 	for _, pat := range patterns {
 		pat = strings.TrimSpace(pat)
 		if pat == "" {
@@ -33,12 +50,12 @@ func NewPushPolicy(patterns []string) (*PushPolicy, error) {
 		}
 		re, err := CompileStrictRegex(pat)
 		if err != nil {
-			return nil, errors.Wrapf(err, "invalid push source namespace pattern %q", pat)
+			return nil, nil, errors.Wrapf(err, "invalid push source namespace pattern %q", pat)
 		}
-		policy.AllowedSourceNamespaces = append(policy.AllowedSourceNamespaces, pat)
-		policy.compiled = append(policy.compiled, re)
+		names = append(names, pat)
+		compiled = append(compiled, re)
 	}
-	return &policy, nil
+	return names, compiled, nil
 }
 
 // AllowsSourceNamespace returns true if objects from the given namespace may be pushed into any namespace. It is safe
@@ -47,7 +64,7 @@ func (p *PushPolicy) AllowsSourceNamespace(namespace string) bool {
 	if p == nil {
 		return false
 	}
-	return MatchesAnyPattern(p.compiled, namespace)
+	return MatchesAnyPattern(p.allowed, namespace) && !MatchesAnyPattern(p.denied, namespace)
 }
 
 // IsPushPermitted checks whether objects from sourceNamespace may be pushed into the target namespace. Push

@@ -18,4 +18,5 @@ type flags struct {
 	SyncByContent            bool
 	ExcludeNamespaces        string
 	PushAllowedSourceNs      string
+	PushDeniedSourceNs       string
 }

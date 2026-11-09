@@ -60,6 +60,9 @@ spec:
             {{- with .Values.pushAllowedSourceNamespaces }}
             - -push-allowed-source-namespaces={{ join "," . }}
             {{- end }}
+            {{- with .Values.pushDeniedSourceNamespaces }}
+            - -push-denied-source-namespaces={{ join "," . }}
+            {{- end }}
             {{- with .Values.args }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

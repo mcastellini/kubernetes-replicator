@@ -95,7 +95,7 @@ func TestConfigMapReplicatorSecurity(t *testing.T) {
 
 	filter, err := common.NewNamespaceFilter([]string{"protected"})
 	require.NoError(t, err)
-	policy, err := common.NewPushPolicy([]string{"trusted.*"})
+	policy, err := common.NewPushPolicy([]string{"trusted.*"}, nil)
 	require.NoError(t, err)
 
 	repl := NewReplicator(client, 0, false, false, filter, policy)

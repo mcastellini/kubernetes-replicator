@@ -39,6 +39,7 @@ spec:
         # To allow namespaces to push objects into all other namespaces ("replicate-to" / "replicate-to-matching"),
         # add for example:
         # - -push-allowed-source-namespaces=platform,cert-manager
+        # - -push-denied-source-namespaces=.*-pr-[0-9]+
         args: []
         ports:
         - name: health

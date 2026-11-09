@@ -21,6 +21,8 @@ automountServiceAccountToken: true
 #   - platform
 #   - cert-manager
 pushAllowedSourceNamespaces: []
+# Namespaces excluded from pushAllowedSourceNamespaces (e.g. ".*-pr-[0-9]+"); allow-push-from is not affected.
+pushDeniedSourceNamespaces: []
 # args:
 # - -resync-period=30m
 # - -allow-all=false

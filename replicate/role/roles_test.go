@@ -80,7 +80,7 @@ func TestRoleReplicator(t *testing.T) {
 	prefix := namespacePrefix()
 	client := kubernetes.NewForConfigOrDie(config)
 
-	pushPolicy, err := common.NewPushPolicy([]string{"test-repl-role-[0-9]+-test.*"})
+	pushPolicy, err := common.NewPushPolicy([]string{"test-repl-role-[0-9]+-test.*"}, nil)
 	require.NoError(t, err)
 
 	repl := NewReplicator(client, 60*time.Second, false, nil, pushPolicy)

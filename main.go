@@ -39,6 +39,7 @@ func init() {
 	flag.BoolVar(&f.SyncByContent, "sync-by-content", false, "Always compare the contents of source and target resources and force them to be the same")
 	flag.StringVar(&f.ExcludeNamespaces, "exclude-namespaces", "", "Comma-separated list of regex patterns for namespaces to exclude from replication (a namespace is excluded if any part of its name matches); the replicator never writes to excluded namespaces")
 	flag.StringVar(&f.PushAllowedSourceNs, "push-allowed-source-namespaces", "", "Comma-separated list of regex patterns (matching the whole name) for namespaces whose objects may be pushed into all other namespaces with the replicate-to/replicate-to-matching annotations. Other namespaces can only push into namespaces that accept them through the "+common.AllowPushFrom+" annotation (CAUTION: anyone who may create objects in a matching namespace can write to every namespace with the replicator's permissions)")
+	flag.StringVar(&f.PushDeniedSourceNs, "push-denied-source-namespaces", "", "Comma-separated list of regex patterns (matching the whole name) excluded from -push-allowed-source-namespaces")
 	flag.Parse()
 
 	switch strings.ToUpper(strings.TrimSpace(f.LogLevel)) {
@@ -96,14 +97,17 @@ func main() {
 		log.WithError(err).Fatal("invalid value for -exclude-namespaces")
 	}
 
-	pushPolicy, err := common.NewPushPolicy(strings.Split(f.PushAllowedSourceNs, ","))
+	pushPolicy, err := common.NewPushPolicy(strings.Split(f.PushAllowedSourceNs, ","), strings.Split(f.PushDeniedSourceNs, ","))
 	if err != nil {
-		log.WithError(err).Fatal("invalid value for -push-allowed-source-namespaces")
+		log.WithError(err).Fatal("invalid value for -push-allowed-source-namespaces or -push-denied-source-namespaces")
 	}
 	if len(pushPolicy.AllowedSourceNamespaces) == 0 {
 		log.Infof("no namespace is allowed to push into all namespaces (-push-allowed-source-namespaces); push replication is only performed into namespaces with the %s annotation", common.AllowPushFrom)
 	} else {
 		log.Infof("namespaces matching %v may push into all namespaces", pushPolicy.AllowedSourceNamespaces)
+	}
+	if len(pushPolicy.DeniedSourceNamespaces) > 0 {
+		log.Infof("namespaces matching %v may not push into all namespaces", pushPolicy.DeniedSourceNamespaces)
 	}
 
 	if f.ReplicateSecrets {

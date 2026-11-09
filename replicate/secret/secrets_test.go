@@ -63,7 +63,7 @@ func (pf *PlainFormatter) Format(entry *log.Entry) ([]byte, error) {
 
 // testPushPolicy allows the namespaces created by the tests ("<prefix>test...") to push into other namespaces.
 func testPushPolicy(t *testing.T) *common.PushPolicy {
-	policy, err := common.NewPushPolicy([]string{"test-repl-[0-9]+-test.*"})
+	policy, err := common.NewPushPolicy([]string{"test-repl-[0-9]+-test.*"}, nil)
 	require.NoError(t, err)
 	return policy
 }
